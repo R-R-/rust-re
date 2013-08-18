@@ -1,0 +1,8 @@
+#[author = "Do Nhat Minh"];
+#[license = "MIT"];
+
+#[link(name="re",
+       vers="0.1.0")];
+#[crate_type = "lib"];
+
+pub mod re;
