@@ -53,22 +53,14 @@ impl<'self> Parser<'self> {
         let mut program = ~[];
         loop {
             match self.parse_one() {
-                Ok(p) => {
-                    if p.len() == 0 {
-                        break;
-                    }
-                    program = Parser::link(program, p);
-                },
+                Ok(p) => program = Parser::link(program, p),
                 Err(e) => return Err(e),
             };
             match self.iter.peek() {
-                Some(&(_, c)) => {
-                    if c == '|' {
-                        self.iter.next();
-                    } else {
-                    }
+                Some(&(_, c)) => if c == '|' {
+                    self.iter.next();
                 },
-                None => {},
+                None => break,
             };
         }
         program.push(Match);
