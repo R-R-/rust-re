@@ -18,12 +18,19 @@ pub enum Instruction {
     Split(uint, uint),
 }
 
+enum IterResult {
+    Matched,
+    Continue,
+    Halt,
+}
+
 /// Compiled version of a regular expression,
 /// to be executed by a virtual machine
 pub type CompiledRegexp = ~[Instruction];
 
 pub struct Vm {
     program: ~[Instruction],
+    ips: ~[uint],
 }
 
 type Iter<'self> = iterator::Peekable<(uint, char), str::CharOffsetIterator<'self>>;
@@ -161,17 +168,46 @@ impl Vm {
     pub fn new(program: ~[Instruction]) -> Vm {
         Vm {
             program: program,
+            ips: ~[],
         }
     }
 
-    pub fn matches(&self, string: &str) -> bool {
-        let mut ips = self.follow_jump(0);
-        if ips.is_empty() {
-            ips.push(0);
+    pub fn matches(&mut self, string: &str) -> bool {
+        let mut iter = string.char_offset_iter();
+        for _ in range(0, string.char_len()) {
+            self.init();
+            for (_, c) in iter.clone() {
+                match self.iterate(c) {
+                    Matched => return true,
+                    Halt => break,
+                    _ => {},
+                }
+            }
+            iter.next();
         }
-        for c in string.iter() {
+        for addr in self.ips.iter() {
+            match self.program[*addr] {
+                Match => return true,
+                _ => {},
+            }
+        }
+        false
+    }
+
+    fn init(&mut self) {
+        self.ips = self.follow_jump(0);
+        if self.ips.is_empty() {
+            self.ips.push(0);
+        }
+    }
+
+    fn iterate(&mut self, c: char) -> IterResult {
+        if self.ips.is_empty() {
+            return Halt;
+        } else {
             let mut new_ips = ~[];
-            for addr in ips.iter() {
+            let mut result = Continue;
+            for addr in self.ips.iter() {
                 match self.program[*addr] {
                     Char(ch) => if ch == c {
                         let new_addrs = self.follow_jump(*addr+1);
@@ -181,19 +217,13 @@ impl Vm {
                             new_ips = vec::append(new_ips, new_addrs);
                         }
                     },
-                    Match => return true,
+                    Match => result = Matched,
                     _ => fail!("Unexpected jump instruction."),
                 }
             }
-            ips = new_ips;
+            self.ips = new_ips;
+            result
         }
-        for addr in ips.iter() {
-            match self.program[*addr] {
-                Match => return true,
-                _ => {},
-            }
-        }
-        false
     }
 
     fn follow_jump(&self, i: uint) -> ~[uint] {
@@ -224,8 +254,9 @@ fn main() {
     let s = ~"chair";
     match compile(s) {
         Ok(p) => {
-            printfln!(p);
-            printfln!(p.matches("chair"));
+            let mut pm = p;
+            printfln!(pm);
+            printfln!(pm.matches("my chairs are red"));
         },
         Err(e) => println(e),
     }
