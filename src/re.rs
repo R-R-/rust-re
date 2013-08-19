@@ -51,23 +51,30 @@ impl<'self> Parser<'self> {
 
     pub fn parse(&mut self) -> Result<CompiledRegexp, ~str> {
         let mut program = ~[];
+        let mut fragment = ~[];
         loop {
             match self.parse_one() {
                 Ok(p) => program = Parser::link(program, p),
                 Err(e) => return Err(e),
             };
             match self.iter.peek() {
-                Some(&(_, c)) => if c == '|' {
+                Some(&(_, c)) => if c == '|' && fragment.is_empty() {
                     self.iter.next();
+                    fragment = program;
+                    program = ~[];
+                } else if c == '|' {
+                    self.iter.next();
+                    fragment = Parser::link_or(fragment, program);
+                    program = ~[];
                 },
                 None => break,
             };
         }
         program.push(Match);
-        Ok(program)
+        Ok(Parser::link_or(fragment, program))
     }
 
-    fn link(p1: ~[Instruction], p2: ~[Instruction]) -> CompiledRegexp {
+    fn link(p1: CompiledRegexp, p2: CompiledRegexp) -> CompiledRegexp {
         let len = p1.len();
         let mut pr = p2;
         for i in range(0, pr.len()) {
@@ -78,6 +85,15 @@ impl<'self> Parser<'self> {
             }
         }
         vec::append(p1, pr)
+    }
+
+    fn link_or(p1: CompiledRegexp, p2: CompiledRegexp) -> CompiledRegexp {
+        let len1 = p1.len();
+        let len2 = p2.len();
+        let mut pr = p1;
+        pr = Parser::link(~[Split(1, len1+2)], pr);
+        pr.push(Jmp(len1+len2+2));
+        Parser::link(pr, p2)
     }
 
     fn parse_one(&mut self) -> Result<CompiledRegexp, ~str> {
@@ -130,7 +146,7 @@ pub fn compile(_pattern: &str) -> Vm {
 
 fn main() {
     // let s = ~"a?b+c*|d*|e+";
-    let s = ~"a+b+";
+    let s = ~"a+b+|a+b+";
     let mut p = Parser::new(s);
     printfln!(p.parse());
 }
