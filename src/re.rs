@@ -1,3 +1,4 @@
+use std::bool;
 use std::iterator;
 use std::str;
 use std::vec;
@@ -21,25 +22,14 @@ pub enum Instruction {
 /// to be executed by a virtual machine
 pub type CompiledRegexp = ~[Instruction];
 
-/// Virtual machine to execute a compiled regular expression
 pub struct Vm {
-    program: CompiledRegexp,
-    ips: ~[uint],
+    program: ~[Instruction],
 }
 
 type Iter<'self> = iterator::Peekable<(uint, char), str::CharOffsetIterator<'self>>;
 
 pub struct Compiler<'self> {
     iter: Iter<'self>,
-}
-
-impl Vm {
-    pub fn new() -> Vm {
-        Vm {
-            program: ~[],
-            ips: ~[],
-        }
-    }
 }
 
 impl<'self> Compiler<'self> {
@@ -162,18 +152,81 @@ impl<'self> Compiler<'self> {
 pub fn compile(pattern: &str) -> Result<Vm, ~str> {
     let mut compiler = Compiler::new(pattern);
     match compiler.compile() {
-        Ok(p) => {
-            let mut vm = Vm::new();
-            vm.program = p;
-            Ok(vm)
-        }
+        Ok(p) => Ok(Vm::new(p)),
         Err(e) => Err(e),
+    }
+}
+
+impl Vm {
+    pub fn new(program: ~[Instruction]) -> Vm {
+        Vm {
+            program: program,
+        }
+    }
+
+    pub fn matches(&self, string: &str) -> bool {
+        let mut ips = self.follow_jump(0);
+        if ips.is_empty() {
+            ips.push(0);
+        }
+        for c in string.iter() {
+            let mut new_ips = ~[];
+            for addr in ips.iter() {
+                match self.program[*addr] {
+                    Char(ch) => if ch == c {
+                        let new_addrs = self.follow_jump(*addr+1);
+                        if new_addrs.is_empty() {
+                            new_ips.push(*addr+1);
+                        } else {
+                            new_ips = vec::append(new_ips, new_addrs);
+                        }
+                    },
+                    Match => return true,
+                    _ => fail!("Unexpected jump instruction."),
+                }
+            }
+            ips = new_ips;
+        }
+        for addr in ips.iter() {
+            match self.program[*addr] {
+                Match => return true,
+                _ => {},
+            }
+        }
+        false
+    }
+
+    fn follow_jump(&self, i: uint) -> ~[uint] {
+        let mut addresses = ~[];
+        let mut working_set = ~[i];
+        while bool::not(working_set.is_empty()) {
+            let mut new_working_set = ~[];
+            for address in working_set.iter() {
+                match self.program[*address] {
+                    Split(a, b) => {
+                        new_working_set.push(a);
+                        new_working_set.push(b);
+                    },
+                    Jmp(a) => new_working_set.push(a),
+                    _ => addresses.push(*address),
+                }
+            }
+            working_set = new_working_set;
+        }
+        addresses
     }
 }
 
 fn main() {
     // let s = ~"a?b+c*|d*|e+";
     // let s = ~"a+b+|a+b+";
-    let s = ~"c(a+(bd)+)+";
-    printfln!(compile(s));
+    // let s = ~"c(a+(bd)+)+";
+    let s = ~"chair";
+    match compile(s) {
+        Ok(p) => {
+            printfln!(p);
+            printfln!(p.matches("chair"));
+        },
+        Err(e) => println(e),
+    }
 }
