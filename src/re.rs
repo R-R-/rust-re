@@ -29,7 +29,7 @@ pub struct Vm {
 
 type Iter<'self> = iterator::Peekable<(uint, char), str::CharOffsetIterator<'self>>;
 
-pub struct Parser<'self> {
+pub struct Compiler<'self> {
     iter: Iter<'self>,
 }
 
@@ -42,9 +42,9 @@ impl Vm {
     }
 }
 
-impl<'self> Parser<'self> {
-    pub fn new<'a>(pattern: &'a str) -> Parser<'a> {
-        Parser {
+impl<'self> Compiler<'self> {
+    pub fn new<'a>(pattern: &'a str) -> Compiler<'a> {
+        Compiler {
             iter: pattern.char_offset_iter().peekable(),
         }
     }
@@ -66,7 +66,7 @@ impl<'self> Parser<'self> {
         let mut fragment = ~[];
         loop {
             match self.parse_one() {
-                Ok(p) => program = Parser::link(program, p),
+                Ok(p) => program = Compiler::link(program, p),
                 Err(e) => return Err(e),
             };
             match self.iter.peek() {
@@ -76,7 +76,7 @@ impl<'self> Parser<'self> {
                     program = ~[];
                 } else if c == '|' {
                     self.iter.next();
-                    fragment = Parser::link_or(fragment, program);
+                    fragment = Compiler::link_or(fragment, program);
                     program = ~[];
                 } else if delimiter.map_default(false, |&dc| dc == c) {
                     self.iter.next();
@@ -89,7 +89,7 @@ impl<'self> Parser<'self> {
         if fragment.is_empty() {
             Ok(program)
         } else {
-            Ok(Parser::link_or(fragment, program))
+            Ok(Compiler::link_or(fragment, program))
         }
     }
 
@@ -110,9 +110,9 @@ impl<'self> Parser<'self> {
         let len1 = p1.len();
         let len2 = p2.len();
         let mut pm = p1;
-        pm = Parser::link(~[Split(1, len1+2)], pm);
+        pm = Compiler::link(~[Split(1, len1+2)], pm);
         pm.push(Jmp(len1+len2+2));
-        Parser::link(pm, p2)
+        Compiler::link(pm, p2)
     }
 
     fn parse_one(&mut self) -> Result<CompiledRegexp, ~str> {
@@ -167,6 +167,6 @@ fn main() {
     // let s = ~"a?b+c*|d*|e+";
     // let s = ~"a+b+|a+b+";
     let s = ~"(ab)+";
-    let mut p = Parser::new(s);
+    let mut p = Compiler::new(s);
     printfln!(p.parse());
 }
