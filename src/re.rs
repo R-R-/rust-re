@@ -134,11 +134,11 @@ impl<'self> Compiler<'self> {
             Some(&(_, ch)) => {
                 match ch {
                     '?' => {
-                        program = vec::append(~[Split(1, len+1)], program);
+                        program = Compiler::link(~[Split(1, len+1)], program);
                         self.iter.next();
                     },
                     '*' => {
-                        program = vec::append(~[Split(1, len+2)], program);
+                        program = Compiler::link(~[Split(1, len+2)], program);
                         program.push(Jmp(0));
                         self.iter.next();
                     },
