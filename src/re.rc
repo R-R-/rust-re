@@ -6,3 +6,4 @@
 #[crate_type = "lib"];
 
 pub mod re;
+pub mod parse;
