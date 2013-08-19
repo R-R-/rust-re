@@ -183,13 +183,13 @@ impl Vm {
                     _ => {},
                 }
             }
-            iter.next();
-        }
-        for addr in self.ips.iter() {
-            match self.program[*addr] {
-                Match => return true,
-                _ => {},
+            for addr in self.ips.iter() {
+                match self.program[*addr] {
+                    Match => return true,
+                    _ => {},
+                }
             }
+            iter.next();
         }
         false
     }
@@ -251,12 +251,12 @@ fn main() {
     // let s = ~"a?b+c*|d*|e+";
     // let s = ~"a+b+|a+b+";
     // let s = ~"c(a+(bd)+)+";
-    let s = ~"chair";
+    let s = ~"baa*";
     match compile(s) {
         Ok(p) => {
             let mut pm = p;
             printfln!(pm);
-            printfln!(pm.matches("my chairs are red"));
+            printfln!(pm.matches("baa"));
         },
         Err(e) => println(e),
     }
