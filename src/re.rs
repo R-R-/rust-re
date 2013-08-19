@@ -50,8 +50,8 @@ impl<'self> Compiler<'self> {
     }
 
 
-    pub fn parse(&mut self) -> Result<CompiledRegexp, ~str> {
-        match self.parse_fragment(None) {
+    pub fn compile(&mut self) -> Result<CompiledRegexp, ~str> {
+        match self.compile_fragment(None) {
             Ok(p) => {
                 let mut pm = p;
                 pm.push(Match);
@@ -61,11 +61,11 @@ impl<'self> Compiler<'self> {
         }
     }
 
-    fn parse_fragment(&mut self, delimiter: Option<char>) -> Result<CompiledRegexp, ~str> {
+    fn compile_fragment(&mut self, delimiter: Option<char>) -> Result<CompiledRegexp, ~str> {
         let mut program = ~[];
         let mut fragment = ~[];
         loop {
-            match self.parse_one() {
+            match self.compile_one() {
                 Ok(p) => program = Compiler::link(program, p),
                 Err(e) => return Err(e),
             };
@@ -115,13 +115,13 @@ impl<'self> Compiler<'self> {
         Compiler::link(pm, p2)
     }
 
-    fn parse_one(&mut self) -> Result<CompiledRegexp, ~str> {
+    fn compile_one(&mut self) -> Result<CompiledRegexp, ~str> {
         let mut program = ~[];
         match self.iter.next() {
             Some((i, c)) => match c {
                 '?' | '*' | '+' | ')' | '|' =>
                     return Err(fmt!("Unexpected char '%c' at %u.", c, i)),
-                '(' => match self.parse_group() {
+                '(' => match self.compile_group() {
                     Ok(p) => program = p,
                     Err(e) => return Err(e),
                 },
@@ -154,19 +154,26 @@ impl<'self> Compiler<'self> {
         Ok(program)
     }
 
-    fn parse_group(&mut self) -> Result<CompiledRegexp, ~str> {
-        self.parse_fragment(Some(')'))
+    fn compile_group(&mut self) -> Result<CompiledRegexp, ~str> {
+        self.compile_fragment(Some(')'))
     }
 }
 
-pub fn compile(_pattern: &str) -> Vm {
-    Vm::new()
+pub fn compile(pattern: &str) -> Result<Vm, ~str> {
+    let mut compiler = Compiler::new(pattern);
+    match compiler.compile() {
+        Ok(p) => {
+            let mut vm = Vm::new();
+            vm.program = p;
+            Ok(vm)
+        }
+        Err(e) => Err(e),
+    }
 }
 
 fn main() {
     // let s = ~"a?b+c*|d*|e+";
     // let s = ~"a+b+|a+b+";
-    let s = ~"(ab)+";
-    let mut p = Compiler::new(s);
-    printfln!(p.parse());
+    let s = ~"c(a+(bd)+)+";
+    printfln!(compile(s));
 }
