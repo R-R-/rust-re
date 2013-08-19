@@ -49,7 +49,19 @@ impl<'self> Parser<'self> {
         }
     }
 
+
     pub fn parse(&mut self) -> Result<CompiledRegexp, ~str> {
+        match self.parse_fragment(None) {
+            Ok(p) => {
+                let mut pm = p;
+                pm.push(Match);
+                Ok(pm)
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    fn parse_fragment(&mut self, delimiter: Option<char>) -> Result<CompiledRegexp, ~str> {
         let mut program = ~[];
         let mut fragment = ~[];
         loop {
@@ -66,34 +78,41 @@ impl<'self> Parser<'self> {
                     self.iter.next();
                     fragment = Parser::link_or(fragment, program);
                     program = ~[];
+                } else if delimiter.map_default(false, |&dc| dc == c) {
+                    self.iter.next();
+                    break;
                 },
                 None => break,
             };
         }
-        program.push(Match);
-        Ok(Parser::link_or(fragment, program))
+
+        if fragment.is_empty() {
+            Ok(program)
+        } else {
+            Ok(Parser::link_or(fragment, program))
+        }
     }
 
     fn link(p1: CompiledRegexp, p2: CompiledRegexp) -> CompiledRegexp {
         let len = p1.len();
-        let mut pr = p2;
-        for i in range(0, pr.len()) {
-            match pr[i] {
-                Split(a, b) => pr[i] = Split(len+a, len+b),
-                Jmp(a) => pr[i] = Jmp(len+a),
+        let mut pm = p2;
+        for i in range(0, pm.len()) {
+            match pm[i] {
+                Split(a, b) => pm[i] = Split(len+a, len+b),
+                Jmp(a) => pm[i] = Jmp(len+a),
                 _ => {},
             }
         }
-        vec::append(p1, pr)
+        vec::append(p1, pm)
     }
 
     fn link_or(p1: CompiledRegexp, p2: CompiledRegexp) -> CompiledRegexp {
         let len1 = p1.len();
         let len2 = p2.len();
-        let mut pr = p1;
-        pr = Parser::link(~[Split(1, len1+2)], pr);
-        pr.push(Jmp(len1+len2+2));
-        Parser::link(pr, p2)
+        let mut pm = p1;
+        pm = Parser::link(~[Split(1, len1+2)], pm);
+        pm.push(Jmp(len1+len2+2));
+        Parser::link(pm, p2)
     }
 
     fn parse_one(&mut self) -> Result<CompiledRegexp, ~str> {
@@ -136,7 +155,7 @@ impl<'self> Parser<'self> {
     }
 
     fn parse_group(&mut self) -> Result<CompiledRegexp, ~str> {
-        Ok(~[])
+        self.parse_fragment(Some(')'))
     }
 }
 
@@ -146,7 +165,8 @@ pub fn compile(_pattern: &str) -> Vm {
 
 fn main() {
     // let s = ~"a?b+c*|d*|e+";
-    let s = ~"a+b+|a+b+";
+    // let s = ~"a+b+|a+b+";
+    let s = ~"(ab)+";
     let mut p = Parser::new(s);
     printfln!(p.parse());
 }
