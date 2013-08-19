@@ -257,17 +257,3 @@ pub fn compile(pattern: &str) -> Result<Vm, ~str> {
     }
 }
 
-fn main() {
-    let s = ~"a?b+c*|d+|e+";
-    // let s = ~"a+b+|a+b+";
-    // let s = ~"c(a+(bd)+)+";
-    // let s = ~"baa*";
-    match compile(s) {
-        Ok(p) => {
-            let mut pm = p;
-            printfln!(pm);
-            printfln!(pm.matches("f"));
-        },
-        Err(e) => println(e),
-    }
-}
