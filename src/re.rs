@@ -166,14 +166,6 @@ impl<'self> Compiler<'self> {
     }
 }
 
-pub fn compile(pattern: &str) -> Result<Vm, ~str> {
-    let mut compiler = Compiler::new(pattern);
-    match compiler.compile() {
-        Ok(p) => Ok(Vm::new(p)),
-        Err(e) => Err(e),
-    }
-}
-
 impl Vm {
     pub fn new(program: ~[Instruction]) -> Vm {
         Vm {
@@ -257,16 +249,24 @@ impl Vm {
     }
 }
 
+pub fn compile(pattern: &str) -> Result<Vm, ~str> {
+    let mut compiler = Compiler::new(pattern);
+    match compiler.compile() {
+        Ok(p) => Ok(Vm::new(p)),
+        Err(e) => Err(e),
+    }
+}
+
 fn main() {
-    // let s = ~"a?b+c*|d*|e+";
+    let s = ~"a?b+c*|d+|e+";
     // let s = ~"a+b+|a+b+";
     // let s = ~"c(a+(bd)+)+";
-    let s = ~"baa*";
+    // let s = ~"baa*";
     match compile(s) {
         Ok(p) => {
             let mut pm = p;
             printfln!(pm);
-            printfln!(pm.matches("baa"));
+            printfln!(pm.matches("f"));
         },
         Err(e) => println(e),
     }
