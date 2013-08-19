@@ -49,7 +49,7 @@ impl<'self> Compiler<'self> {
 
     pub fn compile(&mut self) -> Result<CompiledRegexp, ~str> {
         match self.compile_fragment(None) {
-            Ok(p) => {
+            Ok((p, _)) => {
                 let mut pm = p;
                 pm.push(Match);
                 Ok(pm)
@@ -58,9 +58,11 @@ impl<'self> Compiler<'self> {
         }
     }
 
-    fn compile_fragment(&mut self, delimiter: Option<char>) -> Result<CompiledRegexp, ~str> {
+    fn compile_fragment(&mut self, delimiter: Option<char>)
+        -> Result<(CompiledRegexp, bool), ~str> {
         let mut program = ~[];
         let mut fragment = ~[];
+        let mut found_delimiter = false;
         loop {
             match self.compile_one() {
                 Ok(p) => program = Compiler::link(program, p),
@@ -77,6 +79,7 @@ impl<'self> Compiler<'self> {
                     program = ~[];
                 } else if delimiter.map_default(false, |&dc| dc == c) {
                     self.iter.next();
+                    found_delimiter = true;
                     break;
                 },
                 None => break,
@@ -84,9 +87,9 @@ impl<'self> Compiler<'self> {
         }
 
         if fragment.is_empty() {
-            Ok(program)
+            Ok((program, found_delimiter))
         } else {
-            Ok(Compiler::link_or(fragment, program))
+            Ok((Compiler::link_or(fragment, program), found_delimiter))
         }
     }
 
@@ -152,7 +155,14 @@ impl<'self> Compiler<'self> {
     }
 
     fn compile_group(&mut self) -> Result<CompiledRegexp, ~str> {
-        self.compile_fragment(Some(')'))
+        match self.compile_fragment(Some(')')) {
+            Ok((p, found_delimiter)) => if found_delimiter {
+                Ok(p)
+            } else {
+                Err(UNEXPECTED_EOS.to_owned())
+            },
+            Err(e) => Err(e),
+        }
     }
 }
 
