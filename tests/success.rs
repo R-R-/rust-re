@@ -8,7 +8,7 @@ fn test_success(pattern: &str, string: &str) {
         Ok(p) => {
             let mut pm = p;
             if bool::not(pm.matches(string)) {
-                printfln!("\nMatch failed: pattern '%s' against '%s'.", pattern, string);
+                printfln!("\n[FAILED] Pattern '%s' against '%s'.", pattern, string);
             } else {
                 print(".");
             }
@@ -18,13 +18,37 @@ fn test_success(pattern: &str, string: &str) {
 }
 
 fn main() {
-    let s = ~"baa*!";
-    test_success(s, "ba!");
+    println("\nVerbatim matches");
+    let s = ~"chair";
+    test_success(s, "chair");
+    test_success(s, " chair");
+    test_success(s, "my chair are red");
+    println("\nQuestion mark");
+    let s = ~"chairs?";
+    test_success(s, "chair");
+    test_success(s, " chair");
+    test_success(s, "my chair");
+    test_success(s, "my chairs are red");
+    println("\nKleene's star");
+    let s = ~"baaa*!";
+    test_success(s, "baa!");
+    test_success(s, "baaa!");
+    test_success(s, "baaaa!");
+    test_success(s, " baaaa!");
+    test_success(s, "I said, \" baaaaaa!\"");
+    println("\nPlus");
+    let s = ~"baa+!";
+    test_success(s, "baa!");
+    test_success(s, "baaa!");
+    test_success(s, "baaaa!");
+    test_success(s, " baaaa!");
+    test_success(s, "I said, \" baaaaaa!\"");
+    println("\nMiscelaneous");
     let s = ~"a?b+c*|d+|e+";
     test_success(s, "b");
     let s = ~"a+b+|a+b+";
     test_success(s, "ab");
     let s = ~"c(a+(bd)+)+";
     test_success(s, "cabd");
-    println(".");
+    println("\n");
 }
