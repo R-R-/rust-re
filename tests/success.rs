@@ -51,6 +51,9 @@ fn main() {
     test_success(s, "cam");
     test_success(s, "can");
     test_success(s, "cab");
+    println("\nEscaped characters");
+    let s = ~"\\?\\*\\+\\.\\|\\(\\)";
+    test_success(s, "?*+.|()");
     println("\nMiscelaneous");
     let s = ~"a?b+c*|d+|e+";
     test_success(s, "b");

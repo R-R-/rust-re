@@ -109,12 +109,16 @@ impl<'self> Compiler<'self> {
         match self.iter.next() {
             Some((i, c)) => match c {
                 '?' | '*' | '+' | ')' | '|' =>
-                    return Err(fmt!("Unexpected char '%c' at %u.", c, i)),
+                    return Err(fmt!("Unexpected char '%c' at %u", c, i)),
                 '(' => match self.compile_group() {
                     Ok(p) => program = p,
                     Err(e) => return Err(e),
                 },
                 '.' => program.push(Dot),
+                '\\' => match self.iter.next() {
+                    Some((_, c)) => program.push(Char(c)),
+                    None => return Err(UNEXPECTED_EOS.to_owned()),
+                },
                 _ => program.push(Char(c)),
             },
             None => return Ok(program),
