@@ -43,6 +43,14 @@ fn main() {
     test_success(s, "baaaa!");
     test_success(s, " baaaa!");
     test_success(s, "I said, \" baaaaaa!\"");
+    println("\nDot");
+    let s = ~"ca.";
+    test_success(s, "cat");
+    test_success(s, "car");
+    test_success(s, "cap");
+    test_success(s, "cam");
+    test_success(s, "can");
+    test_success(s, "cab");
     println("\nMiscelaneous");
     let s = ~"a?b+c*|d+|e+";
     test_success(s, "b");

@@ -62,6 +62,7 @@ impl Vm {
                     parse::Char(ch) => if ch == c {
                         new_ips = vec::append(new_ips, self.follow_jump(*addr+1));
                     },
+                    parse::Dot => new_ips = vec::append(new_ips, self.follow_jump(*addr+1)),
                     parse::Match => result = Matched,
                     _ => fail!("Unexpected jump instruction."),
                 }

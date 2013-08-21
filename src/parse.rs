@@ -9,6 +9,8 @@ type Iter<'self> = iterator::Peekable<(uint, char), str::CharOffsetIterator<'sel
 pub enum Instruction {
     /// match one character
     Char(char),
+    /// match any char
+    Dot,
     /// unconditional jump
     Jmp(uint),
     /// successful match
@@ -112,6 +114,7 @@ impl<'self> Compiler<'self> {
                     Ok(p) => program = p,
                     Err(e) => return Err(e),
                 },
+                '.' => program.push(Dot),
                 _ => program.push(Char(c)),
             },
             None => return Ok(program),
