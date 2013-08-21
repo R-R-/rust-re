@@ -60,12 +60,7 @@ impl Vm {
             for addr in self.ips.iter() {
                 match self.program[*addr] {
                     parse::Char(ch) => if ch == c {
-                        let new_addrs = self.follow_jump(*addr+1);
-                        if new_addrs.is_empty() {
-                            new_ips.push(*addr+1);
-                        } else {
-                            new_ips = vec::append(new_ips, new_addrs);
-                        }
+                        new_ips = vec::append(new_ips, self.follow_jump(*addr+1));
                     },
                     parse::Match => result = Matched,
                     _ => fail!("Unexpected jump instruction."),
