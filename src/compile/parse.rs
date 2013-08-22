@@ -3,27 +3,27 @@ use std::str;
 
 pub static UNEXPECTED_EOS: &'static str = "Unexpected end of stream.";
 
-enum One {
+pub enum One {
     Char(char),
     Dot,
-    Group(~[AST]),
+    Group(~[Ast]),
 }
 
-enum Modifier {
+pub enum Modifier {
     No,
     Plus,
     QMark,
     Star,
 }
 
-enum AST {
-    Or(~[~[AST]]),
+pub enum Ast {
+    Or(~[~[Ast]]),
     Fragment(One, Modifier),
 }
 
 pub type Iter<'self> = iterator::Peekable<(uint, char), str::CharOffsetIterator<'self>>;
 
-struct Parser<'self> {
+pub struct Parser<'self> {
     iter: Iter<'self>,
 }
 
@@ -34,14 +34,14 @@ impl<'self> Parser<'self> {
         }
     }
 
-    pub fn parse(&mut self) -> Result<~[AST], ~str> {
+    pub fn parse(&mut self) -> Result<~[Ast], ~str> {
         match self.parse_fragment(None) {
             Ok((ast, _)) => Ok(ast),
             Err(e) => Err(e),
         }
     }
 
-    pub fn parse_fragment(&mut self, delimiter: Option<char>) -> Result<(~[AST], bool), ~str> {
+    pub fn parse_fragment(&mut self, delimiter: Option<char>) -> Result<(~[Ast], bool), ~str> {
         let mut fragment = ~[];
         let mut ast = ~[];
         let mut found_delimiter = false;
@@ -78,7 +78,7 @@ impl<'self> Parser<'self> {
         }
     }
 
-    fn parse_one(&mut self) -> Result<Option<AST>, ~str> {
+    fn parse_one(&mut self) -> Result<Option<Ast>, ~str> {
         let mut one: One;
         let mut modifier: Modifier;
         match self.iter.next() {
@@ -121,7 +121,7 @@ impl<'self> Parser<'self> {
         Ok(Some(Fragment(one, modifier)))
     }
 
-    fn parse_group(&mut self) -> Result<~[AST], ~str> {
+    fn parse_group(&mut self) -> Result<~[Ast], ~str> {
         match self.parse_fragment(Some(')')) {
             Ok((p, found_delimiter)) => if found_delimiter {
                 Ok(p)

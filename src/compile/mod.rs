@@ -21,137 +21,92 @@ pub enum Instruction {
 /// to be executed by a virtual machine
 pub type CompiledRegexp = ~[Instruction];
 
-pub struct Compiler<'self> {
-    iter: parse::Iter<'self>,
-}
-
-impl<'self> Compiler<'self> {
-    pub fn new<'a>(pattern: &'a str) -> Compiler<'a> {
-        Compiler {
-            iter: pattern.char_offset_iter().peekable(),
-        }
-    }
-
-    pub fn compile(&mut self) -> Result<CompiledRegexp, ~str> {
-        match self.compile_fragment(None) {
-            Ok((p, _)) => {
-                let mut pm = p;
-                pm.push(Match);
-                Ok(pm)
-            },
-            Err(e) => Err(e),
-        }
-    }
-
-    fn compile_fragment(&mut self, delimiter: Option<char>)
-        -> Result<(CompiledRegexp, bool), ~str> {
-        let mut program = ~[];
-        let mut fragment = ~[];
-        let mut found_delimiter = false;
-        loop {
-            match self.compile_one() {
-                Ok(p) => program = Compiler::link(program, p),
-                Err(e) => return Err(e),
-            };
-            match self.iter.peek() {
-                Some(&(_, c)) => if c == '|' && fragment.is_empty() {
-                    self.iter.next();
-                    fragment = program;
-                    program = ~[];
-                } else if c == '|' {
-                    self.iter.next();
-                    fragment = Compiler::link_or(fragment, program);
-                    program = ~[];
-                } else if delimiter.map_default(false, |&dc| dc == c) {
-                    self.iter.next();
-                    found_delimiter = true;
-                    break;
-                },
-                None => break,
-            };
-        }
-
-        if fragment.is_empty() {
-            Ok((program, found_delimiter))
-        } else {
-            Ok((Compiler::link_or(fragment, program), found_delimiter))
-        }
-    }
-
-    fn link(p1: CompiledRegexp, p2: CompiledRegexp) -> CompiledRegexp {
-        let len = p1.len();
-        let mut pm = p2;
-        for i in range(0, pm.len()) {
-            match pm[i] {
-                Split(a, b) => pm[i] = Split(len+a, len+b),
-                Jmp(a) => pm[i] = Jmp(len+a),
-                _ => {},
+pub fn compile(pattern: &str) -> Result<CompiledRegexp, ~str> {
+    let mut parser = parse::Parser::new(pattern);
+    let mut compiler = Compiler::new();
+    match parser.parse() {
+        Ok(ast) => {
+            compiler.compile(ast);
+            match compiler {
+                Compiler(r) => Ok(r),
             }
         }
-        vec::append(p1, pm)
+        Err(e) => Err(e),
+    }
+}
+
+struct Compiler(CompiledRegexp);
+
+impl Compiler {
+    pub fn new() -> Compiler {
+        Compiler(~[])
     }
 
-    fn link_or(p1: CompiledRegexp, p2: CompiledRegexp) -> CompiledRegexp {
-        let len1 = p1.len();
-        let len2 = p2.len();
-        let mut pm = p1;
-        pm = Compiler::link(~[Split(1, len1+2)], pm);
-        pm.push(Jmp(len1+len2+2));
-        Compiler::link(pm, p2)
+    pub fn compile(&mut self, ast: &[parse::Ast]) {
+        self.compile_internal(ast);
+        self.push(Match);
     }
 
-    fn compile_one(&mut self) -> Result<CompiledRegexp, ~str> {
-        let mut program = ~[];
-        match self.iter.next() {
-            Some((i, c)) => match c {
-                '?' | '*' | '+' | ')' | '|' =>
-                    return Err(fmt!("Unexpected char '%c' at %u", c, i)),
-                '(' => match self.compile_group() {
-                    Ok(p) => program = p,
-                    Err(e) => return Err(e),
+    fn compile_internal(&mut self, ast: &[parse::Ast]) {
+        for fragment in ast.iter() {
+            match fragment {
+                &parse::Fragment(ref one, ref modifier) => self.compile_fragment(one, modifier),
+                &parse::Or(ref asts) => {
+                    let mut jmps = ~[];
+                    for a in asts.iter() {
+                        let idx = self.len();
+                        self.push(Jmp(-1));
+                        self.compile_internal(*a);
+                        self.push(Jmp(-1));
+                        let l1 = idx + 1;
+                        let l2 = self.len();
+                        self[idx] = Split(l1, l2);
+                        jmps.push(l2 - 1);
+                    }
+                    let len = self.len();
+                    for jmp in jmps.iter() {
+                        self[*jmp] = Jmp(len);
+                    }
                 },
-                '.' => program.push(Dot),
-                '\\' => match self.iter.next() {
-                    Some((_, c)) => program.push(Char(c)),
-                    None => return Err(parse::UNEXPECTED_EOS.to_owned()),
-                },
-                _ => program.push(Char(c)),
-            },
-            None => return Ok(program),
-        };
-        let len = program.len();
-        match self.iter.peek() {
-            Some(&(_, ch)) => {
-                match ch {
-                    '?' => {
-                        program = Compiler::link(~[Split(1, len+1)], program);
-                        self.iter.next();
-                    },
-                    '*' => {
-                        program = Compiler::link(~[Split(1, len+2)], program);
-                        program.push(Jmp(0));
-                        self.iter.next();
-                    },
-                    '+' => {
-                        program.push(Split(0, len+1));
-                        self.iter.next();
-                    },
-                    _ => {},
-                }
-            },
-            None => {},
-        };
-        Ok(program)
+            }
+        }
     }
 
-    fn compile_group(&mut self) -> Result<CompiledRegexp, ~str> {
-        match self.compile_fragment(Some(')')) {
-            Ok((p, found_delimiter)) => if found_delimiter {
-                Ok(p)
-            } else {
-                Err(parse::UNEXPECTED_EOS.to_owned())
+    fn compile_fragment(&mut self, one: &parse::One, modifier: &parse::Modifier) {
+        match modifier {
+            &parse::No => self.compile_one(one),
+            &parse::QMark => {
+                let idx = self.len();
+                let l1 = idx + 1;
+                self.push(Jmp(-1));
+                self.compile_one(one);
+                let l2 = self.len();
+                self[idx] = Split(l1, l2);
             },
-            Err(e) => Err(e),
+            &parse::Star => {
+                let idx = self.len();
+                let l1 = idx;
+                let l2 = idx + 1;
+                self.push(Jmp(-1));
+                self.compile_one(one);
+                let l3 = self.len() + 1;
+                self[idx] = Split(l2, l3);
+                self.push(Jmp(l1));
+            },
+            &parse::Plus => {
+                let l1 = self.len();
+                self.compile_one(one);
+                let l2 = self.len() + 1;
+                self.push(Split(l1, l2));
+            },
+        }
+    }
+
+    fn compile_one(&mut self, one: &parse::One) {
+        match one {
+            &parse::Char(c) => self.push(Char(c)),
+            &parse::Dot => self.push(Dot),
+            &parse::Group(ref ast) => self.compile_internal(*ast),
         }
     }
 }

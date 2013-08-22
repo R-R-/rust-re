@@ -57,8 +57,17 @@ fn main() {
     println("\nMiscelaneous");
     let s = ~"a?b+c*|d+|e+";
     test_success(s, "b");
-    let s = ~"a+b+|a+b+";
+    test_success(s, "bb");
     test_success(s, "ab");
+    test_success(s, "bc");
+    test_success(s, "abc");
+    test_success(s, "d");
+    test_success(s, "e");
+    let s = ~"a+b+|c+";
+    test_success(s, "ab");
+    test_success(s, "aabb");
+    test_success(s, "c");
+    test_success(s, "cc");
     let s = ~"c(a+(bd)+)+";
     test_success(s, "cabd");
     println("\n");

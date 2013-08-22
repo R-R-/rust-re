@@ -94,8 +94,7 @@ impl Vm {
 }
 
 pub fn compile(pattern: &str) -> Result<Vm, ~str> {
-    let mut compiler = compile::Compiler::new(pattern);
-    match compiler.compile() {
+    match compile::compile(pattern) {
         Ok(p) => Ok(Vm::new(p)),
         Err(e) => Err(e),
     }
