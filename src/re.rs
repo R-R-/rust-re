@@ -9,14 +9,14 @@ enum IterResult {
     Halt,
 }
 
-pub struct Vm {
+pub struct Engine {
     program: compile::CompiledRegexp,
     ips: ~[uint],
 }
 
-impl Vm {
-    pub fn new(program: compile::CompiledRegexp) -> Vm {
-        Vm {
+impl Engine {
+    pub fn new(program: compile::CompiledRegexp) -> Engine {
+        Engine {
             program: program,
             ips: ~[],
         }
@@ -93,9 +93,9 @@ impl Vm {
     }
 }
 
-pub fn compile(pattern: &str) -> Result<Vm, ~str> {
+pub fn compile(pattern: &str) -> Result<Engine, ~str> {
     match compile::compile(pattern) {
-        Ok(p) => Ok(Vm::new(p)),
+        Ok(p) => Ok(Engine::new(p)),
         Err(e) => Err(e),
     }
 }
