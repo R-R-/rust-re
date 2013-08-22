@@ -1,8 +1,6 @@
-use std::iterator;
-use std::str;
 use std::vec;
 
-type Iter<'self> = iterator::Peekable<(uint, char), str::CharOffsetIterator<'self>>;
+mod parse;
 
 /// All the instructions that the virtual machine understands
 #[deriving(Clone)]
@@ -24,10 +22,8 @@ pub enum Instruction {
 pub type CompiledRegexp = ~[Instruction];
 
 pub struct Compiler<'self> {
-    iter: Iter<'self>,
+    iter: parse::Iter<'self>,
 }
-
-static UNEXPECTED_EOS: &'static str = "Unexpected end of stream.";
 
 impl<'self> Compiler<'self> {
     pub fn new<'a>(pattern: &'a str) -> Compiler<'a> {
@@ -117,7 +113,7 @@ impl<'self> Compiler<'self> {
                 '.' => program.push(Dot),
                 '\\' => match self.iter.next() {
                     Some((_, c)) => program.push(Char(c)),
-                    None => return Err(UNEXPECTED_EOS.to_owned()),
+                    None => return Err(parse::UNEXPECTED_EOS.to_owned()),
                 },
                 _ => program.push(Char(c)),
             },
@@ -153,7 +149,7 @@ impl<'self> Compiler<'self> {
             Ok((p, found_delimiter)) => if found_delimiter {
                 Ok(p)
             } else {
-                Err(UNEXPECTED_EOS.to_owned())
+                Err(parse::UNEXPECTED_EOS.to_owned())
             },
             Err(e) => Err(e),
         }
