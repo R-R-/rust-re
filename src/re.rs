@@ -1,7 +1,7 @@
 use std::bool;
 use std::vec;
 
-use parse;
+use compile;
 
 enum IterResult {
     Matched,
@@ -10,12 +10,12 @@ enum IterResult {
 }
 
 pub struct Vm {
-    program: parse::CompiledRegexp,
+    program: compile::CompiledRegexp,
     ips: ~[uint],
 }
 
 impl Vm {
-    pub fn new(program: parse::CompiledRegexp) -> Vm {
+    pub fn new(program: compile::CompiledRegexp) -> Vm {
         Vm {
             program: program,
             ips: ~[],
@@ -35,7 +35,7 @@ impl Vm {
             }
             for addr in self.ips.iter() {
                 match self.program[*addr] {
-                    parse::Match => return true,
+                    compile::Match => return true,
                     _ => {},
                 }
             }
@@ -59,11 +59,11 @@ impl Vm {
             let mut result = Continue;
             for addr in self.ips.iter() {
                 match self.program[*addr] {
-                    parse::Char(ch) => if ch == c {
+                    compile::Char(ch) => if ch == c {
                         new_ips = vec::append(new_ips, self.follow_jump(*addr+1));
                     },
-                    parse::Dot => new_ips = vec::append(new_ips, self.follow_jump(*addr+1)),
-                    parse::Match => result = Matched,
+                    compile::Dot => new_ips = vec::append(new_ips, self.follow_jump(*addr+1)),
+                    compile::Match => result = Matched,
                     _ => fail!("Unexpected jump instruction."),
                 }
             }
@@ -79,11 +79,11 @@ impl Vm {
             let mut new_working_set = ~[];
             for address in working_set.iter() {
                 match self.program[*address] {
-                    parse::Split(a, b) => {
+                    compile::Split(a, b) => {
                         new_working_set.push(a);
                         new_working_set.push(b);
                     },
-                    parse::Jmp(a) => new_working_set.push(a),
+                    compile::Jmp(a) => new_working_set.push(a),
                     _ => addresses.push(*address),
                 }
             }
@@ -94,7 +94,7 @@ impl Vm {
 }
 
 pub fn compile(pattern: &str) -> Result<Vm, ~str> {
-    let mut compiler = parse::Compiler::new(pattern);
+    let mut compiler = compile::Compiler::new(pattern);
     match compiler.compile() {
         Ok(p) => Ok(Vm::new(p)),
         Err(e) => Err(e),
