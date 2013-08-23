@@ -52,7 +52,8 @@ impl Compiler {
             match fragment {
                 &parse::Fragment(ref one, ref modifier) => self.compile_fragment(one, modifier),
                 &parse::Or(ref asts) => {
-                    let mut jmps = ~[];
+                    let mut jmps = vec::from_elem(asts.len(), 0u);
+                    let mut i = 0;
                     for a in asts.iter() {
                         let idx = self.len();
                         self.push(Jmp(-1));
@@ -61,7 +62,8 @@ impl Compiler {
                         let l1 = idx + 1;
                         let l2 = self.len();
                         self[idx] = Split(l1, l2);
-                        jmps.push(l2 - 1);
+                        jmps[i] = l2 - 1;
+                        i += 1;
                     }
                     let len = self.len();
                     for jmp in jmps.iter() {
