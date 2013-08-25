@@ -1,4 +1,3 @@
-use std::bool;
 use std::vec;
 
 use compile;
@@ -78,7 +77,7 @@ impl Engine {
     fn follow_jump(&self, i: uint) -> ~[uint] {
         let mut addresses = ~[];
         let mut working_set = ~[i];
-        while bool::not(working_set.is_empty()) {
+        while !working_set.is_empty() {
             let mut new_working_set = ~[];
             for address in working_set.iter() {
                 match self.program[*address] {

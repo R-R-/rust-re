@@ -1,13 +1,12 @@
 extern mod re;
 
 use re::*;
-use std::bool;
 
 fn test_success(pattern: &str, string: &str) {
     match re::compile(pattern) {
         Ok(p) => {
             let mut pm = p;
-            if bool::not(pm.matches(string)) {
+            if !pm.matches(string) {
                 printfln!("\n[FAILED] Pattern '%s' against '%s'.", pattern, string);
             } else {
                 print(".");
