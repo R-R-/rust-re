@@ -2,6 +2,7 @@ use std::bool;
 use std::vec;
 
 use compile;
+use compile::inst;
 
 enum IterResult {
     Matched,
@@ -35,7 +36,7 @@ impl Engine {
             }
             for addr in self.ips.iter() {
                 match self.program[*addr] {
-                    compile::Match => return true,
+                    inst::Succeed => return true,
                     _ => {},
                 }
             }
@@ -59,11 +60,13 @@ impl Engine {
             let mut result = Continue;
             for addr in self.ips.iter() {
                 match self.program[*addr] {
-                    compile::Char(ch) => if ch == c {
-                        new_ips = vec::append(new_ips, self.follow_jump(*addr+1));
+                    inst::Match(m) => match m {
+                        inst::Char(ch) => if ch == c {
+                            new_ips = vec::append(new_ips, self.follow_jump(*addr+1));
+                        },
+                        inst::Dot => new_ips = vec::append(new_ips, self.follow_jump(*addr+1)),
                     },
-                    compile::Dot => new_ips = vec::append(new_ips, self.follow_jump(*addr+1)),
-                    compile::Match => result = Matched,
+                    inst::Succeed => result = Matched,
                     _ => fail!("Unexpected jump instruction."),
                 }
             }
@@ -79,11 +82,11 @@ impl Engine {
             let mut new_working_set = ~[];
             for address in working_set.iter() {
                 match self.program[*address] {
-                    compile::Split(a, b) => {
+                    inst::Split(a, b) => {
                         new_working_set.push(a);
                         new_working_set.push(b);
                     },
-                    compile::Jmp(a) => new_working_set.push(a),
+                    inst::Jmp(a) => new_working_set.push(a),
                     _ => addresses.push(*address),
                 }
             }

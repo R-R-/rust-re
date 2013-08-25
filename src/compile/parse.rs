@@ -1,11 +1,12 @@
 use std::iterator;
 use std::str;
 
+use compile::inst;
+
 pub static UNEXPECTED_EOS: &'static str = "Unexpected end of stream.";
 
 pub enum One {
-    Char(char),
-    Dot,
+    Match(inst::Match),
     Group(~[Ast]),
 }
 
@@ -89,12 +90,12 @@ impl<'self> Parser<'self> {
                     Ok(p) => one = Group(p),
                     Err(e) => return Err(e),
                 },
-                '.' => one = Dot,
+                '.' => one = Match(inst::Dot),
                 '\\' => match self.iter.next() {
-                    Some((_, c)) => one = Char(c),
+                    Some((_, c)) => one = Match(inst::Char(c)),
                     None => return Err(UNEXPECTED_EOS.to_owned()),
                 },
-                _ => one = Char(c),
+                _ => one = Match(inst::Char(c)),
             },
             None => return Ok(None),
         };
